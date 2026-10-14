@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>인초리야 과장 - 디지털 명함</title>
+  <!-- QR 코드 생성 라이브러리 (cdnjs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <style>
+    :root {
+      --color-primary: #134B5F;       /* 청록 (주색) */
+      --color-accent: #D9741F;        /* 주황 (강조) */
+      --color-text-main: #1E2A30;     /* 먹색 (본문) */
+      --color-text-muted: #6B7A80;    /* 회색 (보조) */
+      --color-border: #D5DDE0;        /* 가는 선 */
+      --color-panel: #EEF3F5;         /* 옅은 청록 면 */
+      --font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-family);
+      word-break: keep-all;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #0E161A;
+      color: var(--color-text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px 16px;
+      perspective: 1200px;
+    }
+
+    /* 황금비율의 컴팩트 명함 스테이지 (세로 과장 방지) */
+    .card-scene {
+      width: 100%;
+      max-width: 350px;
+      height: 520px;
+      position: relative;
+    }
+
+    .card-wrap {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: pointer;
+    }
+
+    .card-wrap.flipped {
+      transform: rotateY(180deg);
+    }
+
+    /* 앞면 / 뒷면 공통 */
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      display: flex;
+      flex-direction: column;
+      background: #FFFFFF;
+    }
+
+    /* 홀로그램 반사광 오버레이 */
+    .hologram-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 10;
+      border-radius: 16px;
+      background: linear-gradient(
+        115deg,
+        transparent 15%,
+        rgba(255, 255, 255, 0.45) 28%,
+        rgba(19, 75, 95, 0.3) 38%,
+        rgba(217, 116, 31, 0.4) 48%,
+        rgba(46, 122, 85, 0.35) 58%,
+        rgba(255, 255, 255, 0.45) 68%,
+        transparent 80%
+      );
+      background-size: 250% 250%;
+      background-position: 50% 50%;
+      mix-blend-mode: color-dodge;
+      opacity: 0.8;
+      transition: background-position 0.08s ease;
+    }
+
+    .hologram-sparkle {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 11;
+      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.35) 0%, transparent 60%);
+    }
+
+    /* ================================================= */
+    /* [앞면] 실제 프리미엄 회사 명함 디자인             */
+    /* ================================================= */
+    .card-front {
+      background: #FFFFFF;
+    }
+
+    .front-top {
+      background: linear-gradient(150deg, #134B5F 0%, #0A2630 100%);
+      color: #FFFFFF;
+      padding: 22px 18px 16px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .company-logo-text {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .profile-frame {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      margin-bottom: 8px;
+      background: #FFFFFF;
+    }
+
+    .profile-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .front-name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    .front-name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .front-title {
+      font-size: 14px;
+      color: #C8D8DC;
+      font-weight: 500;
+    }
+
+    .front-dept {
+      font-size: 12px;
+      color: var(--color-accent);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .front-bio {
+      font-size: 11.5px;
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 4px 12px;
+      line-height: 1.35;
+      max-width: 95%;
+    }
+
+    .front-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex: 1;
+      gap: 10px;
+    }
+
+    .info-list {
+      background: #F8FAFB;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      padding: 5px 0;
+      border-bottom: 1px solid #EBEFF1;
+    }
+
+    .info-item:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .info-value {
+      font-weight: 600;
+      color: var(--color-text-main);
+    }
+
+    .front-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .btn-act {
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-act-main {
+      grid-column: span 2;
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border: none;
+      box-shadow: 0 3px 8px rgba(19, 75, 95, 0.2);
+    }
+
+    .btn-act-main:hover {
+      background: #0D3543;
+    }
+
+    .btn-act-sub {
+      background: #FFFFFF;
+      color: var(--color-primary);
+      border: 1.5px solid var(--color-primary);
+    }
+
+    .btn-act-sub:hover {
+      background: var(--color-panel);
+    }
+
+    /* ================================================= */
+    /* [뒷면] 실제 명함 뒷면 (QR & 포트폴리오)           */
+    /* ================================================= */
+    .card-back {
+      transform: rotateY(180deg);
+      background: #FFFFFF;
+      padding: 20px 16px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .back-header {
+      text-align: center;
+      border-bottom: 2px solid var(--color-primary);
+      padding-bottom: 8px;
+    }
+
+    .back-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .back-subtitle {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    .qr-box {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .qr-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 6px;
+    }
+
+    #qrcodeBack {
+      background: #FFFFFF;
+      padding: 6px;
+      border-radius: 6px;
+      display: inline-block;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .tools-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .tool-btn-link {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #F8FAFB;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      text-decoration: none;
+      color: var(--color-text-main);
+      transition: all 0.2s;
+    }
+
+    .tool-btn-link:hover {
+      border-color: var(--color-primary);
+      background: var(--color-panel);
+    }
+
+    .tool-t {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .tool-d {
+      font-size: 10px;
+      color: var(--color-text-muted);
+      margin-top: 1px;
+    }
+
+    .tool-arr {
+      font-weight: bold;
+      color: var(--color-primary);
+      font-size: 13px;
+    }
+
+    .card-footer {
+      text-align: center;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      line-height: 1.35;
+      border-top: 1px solid #ECEFF0;
+      padding-top: 8px;
+    }
+
+    /* 토스트 알림 */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #134B5F;
+      color: #FFFFFF;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .toast.show {
+      opacity: 0.95;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D 명함 카드 (폭 350px x 높이 520px 균형 잡힌 명함 비율) -->
+  <div class="card-scene">
+    <div class="card-wrap" id="cardWrap">
+      
+      <!-- [앞면] -->
+      <div class="card-face card-front" id="cardFront">
+        <div class="hologram-overlay"></div>
+        <div class="hologram-sparkle"></div>
+
+        <div class="front-top">
+          <div class="company-logo-text">MIURA</div>
+          <div class="profile-frame">
+            <img src="프로필.png" alt="프로필 사진" onerror="this.src='../프로필.png'">
+          </div>
+          <div class="front-name-row">
+            <span class="front-name">인초리야</span>
+            <span class="front-title">과장</span>
+          </div>
+          <div class="front-dept">강의 및 기술영업</div>
+          <div class="front-bio">오늘도 조금 더 나은 내일을 위해 달리는중</div>
+        </div>
+
+        <div class="front-body">
+          <div class="info-list">
+            <div class="info-item">
+              <span class="info-label">직함</span>
+              <span class="info-value">과장</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">담당 업무</span>
+              <span class="info-value">강의</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Mobile</span>
+              <span class="info-value">010-0000-0000</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">E-mail</span>
+              <span class="info-value" id="frontEmail">inchoriya@example.com</span>
+            </div>
+          </div>
+
+          <div class="front-actions">
+            <button class="btn-act btn-act-main" onclick="event.stopPropagation(); downloadVCard();">연락처 저장하기</button>
+            <a href="tel:010-0000-0000" class="btn-act btn-act-sub" onclick="event.stopPropagation();">전화 걸기</a>
+            <button class="btn-act btn-act-sub" onclick="event.stopPropagation(); copyEmail();">메일 복사</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- [뒷면] -->
+      <div class="card-face card-back" id="cardBack">
+        <div class="hologram-overlay"></div>
+        <div class="hologram-sparkle"></div>
+
+        <div class="back-header">
+          <div class="back-title">인초리야 과장</div>
+          <div class="back-subtitle">한국미우라공업 AI 사무자동화 교육 실습 명함</div>
+        </div>
+
+        <!-- QR 코드 공유 -->
+        <div class="qr-box">
+          <div class="qr-label">스마트폰 스캔 연결 QR</div>
+          <div id="qrcodeBack"></div>
+        </div>
+
+        <!-- 내가 만든 도구 목록 -->
+        <div class="tools-group">
+          <a href="lotto.html" class="tool-btn-link" onclick="event.stopPropagation();">
+            <div>
+              <div class="tool-t">로또 6/45 & 점심 메뉴 추첨기</div>
+              <div class="tool-d">암호학적 난수 추첨 및 메뉴 룰렛</div>
+            </div>
+            <div class="tool-arr">&rarr;</div>
+          </a>
+          <a href="csv-tool.html" class="tool-btn-link" onclick="event.stopPropagation();" style="opacity: 0.7;">
+            <div>
+              <div class="tool-t">CSV 엑셀 데이터 변환기</div>
+              <div class="tool-d">데이터 정제 및 엑셀 변환 (4교시 준비 중)</div>
+            </div>
+            <div class="tool-arr">&rarr;</div>
+          </a>
+        </div>
+
+        <div class="card-footer">
+          ※ 본 페이지의 연락처 및 메일은 가상 정보입니다.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast">메일 주소가 복사되었습니다.</div>
+
+  <script>
+    const cardWrap = document.getElementById('cardWrap');
+    let isFlipped = false;
+
+    // 명함 터치 시 뒤집기
+    function toggleFlip() {
+      isFlipped = !isFlipped;
+      cardWrap.classList.toggle('flipped', isFlipped);
+    }
+
+    cardWrap.addEventListener('click', () => {
+      toggleFlip();
+    });
+
+    // ==========================================
+    // 홀로그램 효과 (모바일 자이로 센서 & PC 마우스)
+    // ==========================================
+    const overlays = document.querySelectorAll('.hologram-overlay');
+
+    function updateHologram(xPercent, yPercent, tiltX, tiltY) {
+      overlays.forEach(el => {
+        el.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
+      });
+      document.documentElement.style.setProperty('--mouse-x', `${xPercent}%`);
+      document.documentElement.style.setProperty('--mouse-y', `${yPercent}%`);
+
+      const baseFlip = isFlipped ? 180 : 0;
+      cardWrap.style.transform = `rotateY(${baseFlip + tiltX}deg) rotateX(${tiltY}deg)`;
+    }
+
+    // 1. PC: 마우스 움직임 반응
+    window.addEventListener('mousemove', (e) => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const xPercent = (e.clientX / w) * 100;
+      const yPercent = (e.clientY / h) * 100;
+
+      const tiltX = ((e.clientX - w / 2) / (w / 2)) * 8;
+      const tiltY = -((e.clientY - h / 2) / (h / 2)) * 8;
+
+      updateHologram(xPercent, yPercent, tiltX, tiltY);
+    });
+
+    // 2. 모바일: 스마트폰 자이로스코프(기울기) 센서 반응
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', (e) => {
+        if (e.gamma !== null && e.beta !== null) {
+          const tiltX = Math.max(-12, Math.min(12, e.gamma / 2.2));
+          const tiltY = Math.max(-12, Math.min(12, (e.beta - 45) / 2.2));
+
+          const xPercent = 50 + (tiltX * 3.5);
+          const yPercent = 50 + (tiltY * 3.5);
+
+          updateHologram(xPercent, yPercent, tiltX, -tiltY);
+        }
+      });
+    }
+
+    // 이메일 복사
+    function copyEmail() {
+      const email = document.getElementById('frontEmail').textContent;
+      navigator.clipboard.writeText(email).then(() => {
+        showToast('메일 주소가 복사되었습니다.');
+      }).catch(() => {
+        prompt('아래 메일 주소를 복사하세요:', email);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 1800);
+    }
+
+    // vCard 연락처 파일 다운로드
+    function downloadVCard() {
+      const vcardData = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        'N:;인초리야;;;',
+        'FN:인초리야 과장',
+        'TITLE:과장',
+        'ROLE:강의',
+        'NOTE:오늘도 조금 더 나은 내일을 위해 달리는중',
+        'TEL;TYPE=CELL:010-0000-0000',
+        'EMAIL;TYPE=INTERNET:inchoriya@example.com',
+        'END:VCARD'
+      ].join('\r\n');
+
+      const blob = new Blob([vcardData], { type: 'text/vcard;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '인초리야_명함.vcf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('연락처 파일(.vcf)을 다운로드했습니다.');
+    }
+
+    // QR 코드 자동 생성
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const currentUrl = window.location.href.startsWith('http') 
+          ? window.location.href 
+          : 'https://github.com';
+
+        const qr = qrcode(0, 'M');
+        qr.addData(currentUrl);
+        qr.make();
+        document.getElementById('qrcodeBack').innerHTML = qr.createImgTag(3.5, 6);
+      } catch (e) {
+        document.getElementById('qrcodeBack').innerHTML = '<span style="font-size:11px;color:#6B7A80;">QR 코드</span>';
+      }
+    });
+  </script>
+
+</body>
+</html>
