@@ -598,15 +598,13 @@
       showToast('연락처 파일(.vcf)을 다운로드했습니다.');
     }
 
-    // QR 코드 자동 생성
+    // QR 코드 자동 생성 (배포된 GitHub Pages 실제 주소로 고정)
     window.addEventListener('DOMContentLoaded', () => {
       try {
-        const currentUrl = window.location.href.startsWith('http') 
-          ? window.location.href 
-          : 'https://github.com';
+        const targetUrl = 'https://inchoriya1.github.io/my-card/';
 
         const qr = qrcode(0, 'M');
-        qr.addData(currentUrl);
+        qr.addData(targetUrl);
         qr.make();
         document.getElementById('qrcodeBack').innerHTML = qr.createImgTag(3.5, 6);
       } catch (e) {
