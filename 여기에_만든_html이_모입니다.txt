@@ -1,0 +1,2 @@
+이 폴더에 3·4교시에 만든 html 파일(index.html, lotto.html, csv-tool.html)을 저장합니다.
+GitHub에는 이 안내 파일 말고 html 파일만 올리세요.
