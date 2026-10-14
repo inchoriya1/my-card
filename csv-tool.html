@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV 데이터 정제 및 엑셀 변환 도구</title>
+  <!-- ExcelJS 4.4.0 (cdnjs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <style>
+    :root {
+      --color-primary: #134B5F;       /* 청록 (주색) */
+      --color-primary-dark: #0E3746;
+      --color-accent: #D9741F;        /* 주황 (강조) */
+      --color-text-main: #1E2A30;     /* 먹색 (본문) */
+      --color-text-muted: #6B7A80;    /* 회색 (보조) */
+      --color-border: #D5DDE0;        /* 가는 선 */
+      --color-bg-light: #F5F7F8;      /* 종이 회색 면 */
+      --color-panel: #EEF3F5;         /* 옅은 청록 면 */
+      --font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-family);
+      word-break: keep-all;
+    }
+
+    body {
+      background-color: #F8FAFB;
+      color: var(--color-text-main);
+      padding: 24px 16px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 860px;
+      background: #FFFFFF;
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px 28px;
+      box-shadow: 0 4px 14px rgba(19, 75, 95, 0.06);
+    }
+
+    /* 네비게이션 헤더 */
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--color-primary);
+      padding-bottom: 12px;
+    }
+
+    .nav-title-group .kicker {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-accent);
+      margin-bottom: 2px;
+    }
+
+    .nav-title-group h1 {
+      font-size: 22px;
+      color: var(--color-primary);
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-primary);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid var(--color-primary);
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .nav-links a:hover {
+      background: var(--color-panel);
+    }
+
+    /* 보안 안내 배너 */
+    .security-banner {
+      background: var(--color-panel);
+      border-left: 4px solid var(--color-primary);
+      padding: 10px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--color-primary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* 드래그 앤 드롭 업로드 존 */
+    .drop-zone {
+      border: 2px dashed var(--color-border);
+      border-radius: 8px;
+      background: var(--color-bg-light);
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--color-primary);
+      background: #EDF4F7;
+    }
+
+    .drop-text-main {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 6px;
+    }
+
+    .drop-text-sub {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    .file-input-hidden {
+      display: none;
+    }
+
+    /* 파일 정보 카드 */
+    .file-meta-card {
+      background: #FFFFFF;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .file-name-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .file-stat-tags {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    .stat-tag {
+      background: var(--color-bg-light);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--color-border);
+      font-weight: 600;
+    }
+
+    /* 설정 및 옵션 아코디언 */
+    .config-card {
+      background: var(--color-bg-light);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 24px;
+    }
+
+    .config-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 6px;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .config-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .config-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
+
+    .config-select, .config-input {
+      padding: 7px 10px;
+      font-size: 13px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      background: #FFFFFF;
+      outline: none;
+    }
+
+    .config-select:focus, .config-input:focus {
+      border-color: var(--color-primary);
+    }
+
+    .rules-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--color-border);
+    }
+
+    .checkbox-label {
+      font-size: 13px;
+      color: var(--color-text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    /* 실행 및 다운로드 버튼 바 */
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #FFFFFF;
+      flex: 1.2;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-dark);
+    }
+
+    .btn-download-excel {
+      background: var(--color-accent);
+      color: #FFFFFF;
+      flex: 1.5;
+    }
+
+    .btn-download-excel:hover {
+      background: #BD5F14;
+    }
+
+    .btn-secondary {
+      background: #FFFFFF;
+      border: 1px solid var(--color-primary);
+      color: var(--color-primary);
+      flex: 1;
+    }
+
+    .btn-secondary:hover {
+      background: var(--color-panel);
+    }
+
+    /* 통계 KPI 카드 */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-box {
+      background: var(--color-bg-light);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
+    }
+
+    .kpi-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .kpi-val.highlight {
+      color: var(--color-accent);
+    }
+
+    /* 테이블 영역 */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .section-title-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th {
+      background: var(--color-panel);
+      color: var(--color-primary);
+      font-weight: 700;
+      padding: 9px 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--color-primary);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #EAEFF1;
+      color: var(--color-text-main);
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr.total-row {
+      background: var(--color-panel);
+      font-weight: 700;
+    }
+
+    tr.total-row td {
+      border-top: 1px solid var(--color-primary);
+      border-bottom: 2px double var(--color-primary);
+    }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    /* 검산 배너 */
+    .audit-bar {
+      padding: 12px 16px;
+      background: var(--color-panel);
+      border: 1px solid var(--color-primary);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* SVG 차트 */
+    .chart-box {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 24px;
+      background: #FFFFFF;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      border-top: 1px solid var(--color-border);
+      padding-top: 14px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 상단 네비게이션 -->
+  <div class="nav-bar">
+    <div class="nav-title-group">
+      <div class="kicker">사무자동화 웹 도구</div>
+      <h1>CSV 정제 및 엑셀 변환기</h1>
+    </div>
+    <div class="nav-links">
+      <a href="index.html">내 명함</a>
+      <a href="lotto.html">로또 추첨기</a>
+    </div>
+  </div>
+
+  <!-- 보안 안내 -->
+  <div class="security-banner">
+    보안 안내: 선택하신 CSV 파일은 외부 서버로 전송되지 않으며, 모든 정제와 엑셀 생성은 브라우저 안에서 안전하게 처리됩니다.
+  </div>
+
+  <!-- 1단계: CSV 파일 읽기 드롭존 -->
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFileInput').click()">
+    <div class="drop-text-main">CSV 파일을 이곳에 끌어다 놓거나 클릭하여 선택하세요</div>
+    <div class="drop-text-sub">UTF-8 및 EUC-KR(CP949) 한글 인코딩을 자동 판별하여 읽습니다</div>
+    <input type="file" id="csvFileInput" class="file-input-hidden" accept=".csv,text/csv">
+  </div>
+
+  <!-- 파일 메타 정보 (업로드 후 표시) -->
+  <div id="fileMetaCard" class="file-meta-card" style="display: none;">
+    <div class="file-name-text" id="fileNameDisplay">-</div>
+    <div class="file-stat-tags">
+      <span class="stat-tag" id="statEncoding">인코딩: UTF-8</span>
+      <span class="stat-tag" id="statRows">0행</span>
+      <span class="stat-tag" id="statCols">0열</span>
+    </div>
+  </div>
+
+  <!-- 2단계: 정제 규칙 및 열 지정 설정 -->
+  <div id="configSection" class="config-card" style="display: none;">
+    <div class="config-title">정제 및 집계 기준 설정</div>
+    <div class="config-grid">
+      <div class="config-item">
+        <label class="config-label" for="colOrder">중복 기준 열 (주문번호)</label>
+        <select id="colOrder" class="config-select"></select>
+      </div>
+      <div class="config-item">
+        <label class="config-label" for="colDate">날짜 열 (YYYY-MM-DD)</label>
+        <select id="colDate" class="config-select"></select>
+      </div>
+      <div class="config-item">
+        <label class="config-label" for="colGroup">묶을 기준 열 (지사/그룹)</label>
+        <select id="colGroup" class="config-select"></select>
+      </div>
+      <div class="config-item">
+        <label class="config-label" for="colAmount">금액 열 (수주금액)</label>
+        <select id="colAmount" class="config-select"></select>
+      </div>
+      <div class="config-item">
+        <label class="config-label" for="colSales">두 번째 금액 열 (매출금액)</label>
+        <select id="colSales" class="config-select"></select>
+      </div>
+      <div class="config-item">
+        <label class="config-label" for="colStatus">상태 열</label>
+        <select id="colStatus" class="config-select"></select>
+      </div>
+    </div>
+
+    <div class="rules-row">
+      <label class="checkbox-label">
+        <input type="checkbox" id="ruleTrim" checked> 텍스트 앞뒤 공백 제거
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="ruleDate" checked> 날짜 YYYY-MM-DD 통일
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="ruleDedup" checked> 주문번호 중복 제거 (첫 행 유지)
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="ruleCancel" checked> 상태 제외:
+        <input type="text" id="cancelValue" class="config-input" value="취소" style="width: 70px; padding: 2px 6px;">
+      </label>
+    </div>
+  </div>
+
+  <!-- 실행 및 3단계 다운로드 버튼 -->
+  <div id="actionBar" class="action-bar" style="display: none;">
+    <button class="btn btn-primary" onclick="processData()">데이터 정제 및 집계 실행</button>
+    <button class="btn btn-download-excel" id="btnDownloadExcel" onclick="downloadExcel()">엑셀로 내려받기 (.xlsx)</button>
+    <button class="btn btn-secondary" onclick="downloadCleanCSV()">정리된 CSV 내려받기 (BOM)</button>
+  </div>
+
+  <!-- 결과 영역 -->
+  <div id="resultSection" style="display: none;">
+    <!-- 핵심 KPI 요약 -->
+    <div class="kpi-row">
+      <div class="kpi-box">
+        <div class="kpi-label">원본 행 수</div>
+        <div class="kpi-val" id="kpiRawRows">0</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">제외된 행 (중복/취소)</div>
+        <div class="kpi-val" id="kpiExcludedRows">0</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">집계 대상 행</div>
+        <div class="kpi-val highlight" id="kpiCleanRows">0</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">수주금액 합계</div>
+        <div class="kpi-val highlight" id="kpiTotalOrder">0</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-label">완료율 (건수 기준)</div>
+        <div class="kpi-val" id="kpiCompRate">0.0%</div>
+      </div>
+    </div>
+
+    <!-- 검산 한 줄 -->
+    <div class="audit-bar" id="auditBar">
+      <span>검산 결과: 기준별 합계 = 전체 수주 합계</span>
+      <span id="auditResultText" style="color: var(--color-accent);">검산 대기</span>
+    </div>
+
+    <!-- 기준 그룹별 집계 표 (지사별) -->
+    <div class="section-header">
+      <div class="section-title-text" id="groupTableTitle">기준별 수주 실적 요약</div>
+      <span style="font-size: 11px; color: var(--color-text-muted);">단위: 건, 천원, %</span>
+    </div>
+    <div class="table-wrap">
+      <table id="groupTable">
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th class="text-right">수주건수</th>
+            <th class="text-right">수주금액(천원)</th>
+            <th class="text-right">수주비중</th>
+            <th class="text-center">순위</th>
+            <th class="text-right">완료건수</th>
+            <th class="text-right">매출금액(천원)</th>
+            <th class="text-right">완료율</th>
+          </tr>
+        </thead>
+        <tbody id="groupTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- SVG 막대 그래프 -->
+    <div class="chart-box">
+      <div class="section-title-text" style="margin-bottom: 12px;">기준별 수주금액 비교</div>
+      <svg id="svgChart" width="100%" height="200"></svg>
+    </div>
+
+    <!-- 월별 집계 표 -->
+    <div class="section-header">
+      <div class="section-title-text">월별 수주 추이</div>
+    </div>
+    <div class="table-wrap">
+      <table id="monthlyTable">
+        <thead>
+          <tr>
+            <th>월</th>
+            <th class="text-right">수주건수</th>
+            <th class="text-right">수주금액(천원)</th>
+            <th class="text-right">완료건수</th>
+            <th class="text-right">매출금액(천원)</th>
+            <th class="text-right">완료율</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 원본 미리보기 처음 5행 -->
+    <div class="section-header">
+      <div class="section-title-text">처음 5행 미리보기</div>
+    </div>
+    <div class="table-wrap">
+      <table id="previewTable">
+        <thead id="previewThead"></thead>
+        <tbody id="previewTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    한국미우라공업 AI 사무자동화 교육 실습 웹 도구 · 브라우저 로컬 데이터 처리
+  </footer>
+</div>
+
+<script>
+  let rawFileObj = null;
+  let rawHeader = [];
+  let rawDataRows = [];
+  
+  // 정제 결과 전역 변수
+  let cleanDataRows = [];
+  let excludedRows = [];
+  let groupSummaryData = [];
+  let monthlySummaryData = [];
+  let totalOrderAmt = 0;
+  let totalCleanCount = 0;
+
+  // 1. 드래그 앤 드롭 이벤트
+  const dropZone = document.getElementById('dropZone');
+  const csvFileInput = document.getElementById('csvFileInput');
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+    });
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0) handleFile(files[0]);
+  });
+
+  csvFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+  });
+
+  // 2. 인코딩 자동 판별 및 파싱
+  function handleFile(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('CSV 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    rawFileObj = file;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const buffer = e.target.result;
+      // UTF-8 시도
+      let text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+      let detectedEncoding = 'UTF-8';
+
+      // 한글 깨짐 징후 (REPLACEMENT CHARACTER '\uFFFD') 확인
+      if (text.includes('\uFFFD')) {
+        try {
+          text = new TextDecoder('euc-kr').decode(buffer);
+          detectedEncoding = 'EUC-KR (CP949)';
+        } catch (err) {
+          detectedEncoding = 'UTF-8';
+        }
+      }
+
+      parseCSVText(text, detectedEncoding);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // 큰따옴표 안 쉼표와 줄바꿈을 완벽히 처리하는 정밀 CSV 파서
+  function parseCSVText(csvText, encoding) {
+    const rows = [];
+    let currentRow = [];
+    let currentField = '';
+    let inQuotes = false;
+
+    // BOM 제거
+    let text = csvText.replace(/^\uFEFF/, '');
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentField += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        currentRow.push(currentField);
+        currentField = '';
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') i++;
+        currentRow.push(currentField);
+        currentField = '';
+        if (currentRow.length > 1 || currentRow[0] !== '') {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+      } else {
+        currentField += char;
+      }
+    }
+    if (currentField || currentRow.length > 0) {
+      currentRow.push(currentField);
+      rows.push(currentRow);
+    }
+
+    if (rows.length < 2) {
+      alert('데이터가 충분하지 않은 CSV 파일입니다.');
+      return;
+    }
+
+    rawHeader = rows[0].map(h => h.trim());
+    rawDataRows = rows.slice(1);
+
+    // 메타 정보 표시
+    document.getElementById('fileNameDisplay').textContent = rawFileObj.name;
+    document.getElementById('statEncoding').textContent = `인코딩: ${encoding}`;
+    document.getElementById('statRows').textContent = `${rawDataRows.length}행`;
+    document.getElementById('statCols').textContent = `${rawHeader.length}열`;
+    document.getElementById('fileMetaCard').style.display = 'flex';
+
+    // 2단계 설정 UI 채우기
+    initColumnSelectors();
+    document.getElementById('configSection').style.display = 'block';
+    document.getElementById('actionBar').style.display = 'flex';
+
+    // 자동 실행
+    processData();
+  }
+
+  // 열 자동 감지
+  function initColumnSelectors() {
+    const selectors = [
+      { id: 'colOrder', keywords: ['주문', '번호', '코드', 'id'], fallbackIdx: 0 },
+      { id: 'colDate', keywords: ['일자', '날짜', 'date'], fallbackIdx: 1 },
+      { id: 'colGroup', keywords: ['지사', '부서', '지역', '팀', '업체'], fallbackIdx: 2 },
+      { id: 'colAmount', keywords: ['수주금액', '수주', '금액', '매출'], fallbackIdx: 7 },
+      { id: 'colSales', keywords: ['매출금액', '매출', '결제'], fallbackIdx: 8 },
+      { id: 'colStatus', keywords: ['상태', '진행', '구분'], fallbackIdx: 9 }
+    ];
+
+    selectors.forEach(s => {
+      const el = document.getElementById(s.id);
+      el.innerHTML = '';
+      
+      let matchedIdx = -1;
+      rawHeader.forEach((h, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `[열 ${idx + 1}] ${h}`;
+        el.appendChild(opt);
+
+        if (matchedIdx === -1 && s.keywords.some(k => h.includes(k))) {
+          matchedIdx = idx;
+        }
+      });
+
+      el.value = (matchedIdx !== -1) ? matchedIdx : Math.min(s.fallbackIdx, rawHeader.length - 1);
+    });
+  }
+
+  // 2단계: 데이터 정제 및 집계 계산
+  function processData() {
+    const idxOrder = parseInt(document.getElementById('colOrder').value, 10);
+    const idxDate = parseInt(document.getElementById('colDate').value, 10);
+    const idxGroup = parseInt(document.getElementById('colGroup').value, 10);
+    const idxAmt = parseInt(document.getElementById('colAmount').value, 10);
+    const idxSales = parseInt(document.getElementById('colSales').value, 10);
+    const idxStatus = parseInt(document.getElementById('colStatus').value, 10);
+
+    const ruleTrim = document.getElementById('ruleTrim').checked;
+    const ruleDate = document.getElementById('ruleDate').checked;
+    const ruleDedup = document.getElementById('ruleDedup').checked;
+    const ruleCancel = document.getElementById('ruleCancel').checked;
+    const cancelVal = document.getElementById('cancelValue').value.trim();
+
+    cleanDataRows = [];
+    excludedRows = [];
+    const seenOrders = new Set();
+
+    rawDataRows.forEach(row => {
+      let r = [...row];
+      // 1) 앞뒤 공백 제거
+      if (ruleTrim) {
+        r = r.map(c => (typeof c === 'string' ? c.trim() : c));
+      }
+
+      // 2) 날짜 정규화
+      if (ruleDate && r[idxDate]) {
+        r[idxDate] = r[idxDate].replace(/\./g, '-').replace(/\//g, '-');
+      }
+
+      const orderKey = r[idxOrder] || '';
+      const statusKey = r[idxStatus] || '';
+
+      // 3) 중복 제거
+      if (ruleDedup && orderKey) {
+        if (seenOrders.has(orderKey)) {
+          excludedRows.push([...r, '중복 주문번호']);
+          return;
+        }
+        seenOrders.add(orderKey);
+      }
+
+      // 4) 취소 제외
+      if (ruleCancel && cancelVal && statusKey === cancelVal) {
+        excludedRows.push([...r, `상태: ${cancelVal}`]);
+        return;
+      }
+
+      cleanDataRows.push(r);
+    });
+
+    // 집계 계산
+    totalCleanCount = cleanDataRows.length;
+    totalOrderAmt = 0;
+    let completedCount = 0;
+
+    const groupMap = {};
+    const monthlyMap = {};
+
+    cleanDataRows.forEach(r => {
+      const gName = r[idxGroup] || '기타';
+      const dStr = (r[idxDate] || '').slice(0, 7);
+      const amt = parseFloat((r[idxAmt] || '').toString().replace(/,/g, '')) || 0;
+      const salesRaw = (r[idxSales] !== undefined && r[idxSales] !== '') ? r[idxSales].toString().replace(/,/g, '') : null;
+      const sales = salesRaw !== null ? (parseFloat(salesRaw) || 0) : null;
+      const isCompleted = (r[idxStatus] === '완료');
+
+      totalOrderAmt += amt;
+      if (isCompleted) completedCount++;
+
+      // 지사/그룹별
+      if (!groupMap[gName]) {
+        groupMap[gName] = { name: gName, count: 0, orderAmt: 0, compCount: 0, salesAmt: 0 };
+      }
+      groupMap[gName].count++;
+      groupMap[gName].orderAmt += amt;
+      if (isCompleted) {
+        groupMap[gName].compCount++;
+        if (sales !== null) groupMap[gName].salesAmt += sales;
+      }
+
+      // 월별
+      if (dStr) {
+        if (!monthlyMap[dStr]) {
+          monthlyMap[dStr] = { month: dStr, count: 0, orderAmt: 0, compCount: 0, salesAmt: 0 };
+        }
+        monthlyMap[dStr].count++;
+        monthlyMap[dStr].orderAmt += amt;
+        if (isCompleted) {
+          monthlyMap[dStr].compCount++;
+          if (sales !== null) monthlyMap[dStr].salesAmt += sales;
+        }
+      }
+    });
+
+    // 지사 배열 변환 및 순위
+    groupSummaryData = Object.values(groupMap);
+    groupSummaryData.sort((a, b) => b.orderAmt - a.orderAmt);
+    groupSummaryData.forEach((item, idx) => {
+      item.rank = idx + 1;
+      item.share = totalOrderAmt > 0 ? (item.orderAmt / totalOrderAmt) : 0;
+      item.compRate = item.count > 0 ? (item.compCount / item.count) : 0;
+    });
+
+    // 월별 정렬
+    monthlySummaryData = Object.values(monthlyMap);
+    monthlySummaryData.sort((a, b) => a.month.localeCompare(b.month));
+    monthlySummaryData.forEach(item => {
+      item.compRate = item.count > 0 ? (item.compCount / item.count) : 0;
+    });
+
+    // 화면 업데이트
+    renderResults(completedCount);
+  }
+
+  // 결과 화면 렌더링
+  function renderResults(completedCount) {
+    document.getElementById('resultSection').style.display = 'block';
+
+    document.getElementById('kpiRawRows').textContent = `${rawDataRows.length}행`;
+    document.getElementById('kpiExcludedRows').textContent = `${excludedRows.length}행`;
+    document.getElementById('kpiCleanRows').textContent = `${totalCleanCount}행`;
+    document.getElementById('kpiTotalOrder').textContent = `${Math.round(totalOrderAmt).toLocaleString()}천원`;
+    
+    const overallRate = totalCleanCount > 0 ? ((completedCount / totalCleanCount) * 100).toFixed(1) : '0.0';
+    document.getElementById('kpiCompRate').textContent = `${overallRate}% (${completedCount}/${totalCleanCount})`;
+
+    // 검산 한 줄
+    const groupSum = groupSummaryData.reduce((acc, cur) => acc + cur.orderAmt, 0);
+    const auditText = document.getElementById('auditResultText');
+    if (Math.round(groupSum) === Math.round(totalOrderAmt)) {
+      auditText.textContent = `일치 (지사 합계 ${Math.round(groupSum).toLocaleString()} = 전체 ${Math.round(totalOrderAmt).toLocaleString()}천원)`;
+      auditText.style.color = 'var(--color-primary)';
+    } else {
+      auditText.textContent = `불일치 (지사 합계 ${groupSum} != 전체 ${totalOrderAmt})`;
+      auditText.style.color = '#CE3B3B';
+    }
+
+    // 그룹별 테이블
+    const groupTbody = document.getElementById('groupTableBody');
+    groupTbody.innerHTML = '';
+    groupSummaryData.forEach(g => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${g.name}</strong></td>
+        <td class="text-right">${g.count.toLocaleString()}</td>
+        <td class="text-right">${Math.round(g.orderAmt).toLocaleString()}</td>
+        <td class="text-right">${(g.share * 100).toFixed(1)}%</td>
+        <td class="text-center">${g.rank}</td>
+        <td class="text-right">${g.compCount.toLocaleString()}</td>
+        <td class="text-right">${Math.round(g.salesAmt).toLocaleString()}</td>
+        <td class="text-right" style="${g.compRate < 0.8 ? 'color: var(--color-accent); font-weight: bold;' : ''}">${(g.compRate * 100).toFixed(1)}%</td>
+      `;
+      groupTbody.appendChild(tr);
+    });
+
+    // 그룹 합계 행
+    const totalSales = groupSummaryData.reduce((acc, cur) => acc + cur.salesAmt, 0);
+    const trTotal = document.createElement('tr');
+    trTotal.className = 'total-row';
+    trTotal.innerHTML = `
+      <td><strong>합계</strong></td>
+      <td class="text-right">${totalCleanCount.toLocaleString()}</td>
+      <td class="text-right">${Math.round(totalOrderAmt).toLocaleString()}</td>
+      <td class="text-right">100.0%</td>
+      <td class="text-center">-</td>
+      <td class="text-right">${completedCount.toLocaleString()}</td>
+      <td class="text-right">${Math.round(totalSales).toLocaleString()}</td>
+      <td class="text-right">${overallRate}%</td>
+    `;
+    groupTbody.appendChild(trTotal);
+
+    // 월별 테이블
+    const monthlyTbody = document.getElementById('monthlyTableBody');
+    monthlyTbody.innerHTML = '';
+    monthlySummaryData.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${m.month}</strong></td>
+        <td class="text-right">${m.count.toLocaleString()}</td>
+        <td class="text-right">${Math.round(m.orderAmt).toLocaleString()}</td>
+        <td class="text-right">${m.compCount.toLocaleString()}</td>
+        <td class="text-right">${Math.round(m.salesAmt).toLocaleString()}</td>
+        <td class="text-right">${(m.compRate * 100).toFixed(1)}%</td>
+      `;
+      monthlyTbody.appendChild(tr);
+    });
+
+    // SVG 차트 그리기
+    renderSVGChart();
+
+    // 처음 5행 미리보기
+    renderPreview();
+  }
+
+  // SVG 차트 직접 생성
+  function renderSVGChart() {
+    const svg = document.getElementById('svgChart');
+    svg.innerHTML = '';
+    if (groupSummaryData.length === 0) return;
+
+    const maxAmt = Math.max(...groupSummaryData.map(g => g.orderAmt), 1);
+    const barHeight = 22;
+    const gap = 12;
+
+    groupSummaryData.forEach((g, idx) => {
+      const y = idx * (barHeight + gap) + 10;
+      const barWidth = (g.orderAmt / maxAmt) * 60; // %
+
+      // 텍스트 라벨
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', '0');
+      text.setAttribute('y', y + 16);
+      text.setAttribute('fill', '#1E2A30');
+      text.setAttribute('font-size', '12px');
+      text.textContent = g.name;
+      svg.appendChild(text);
+
+      // 막대
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', '55');
+      rect.setAttribute('y', y);
+      rect.setAttribute('width', `${barWidth}%`);
+      rect.setAttribute('height', barHeight);
+      rect.setAttribute('fill', idx < 2 ? '#134B5F' : '#6B7A80');
+      rect.setAttribute('rx', '3');
+      svg.appendChild(rect);
+
+      // 수치
+      const valText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      valText.setAttribute('x', `calc(58px + ${barWidth}%)`);
+      valText.setAttribute('y', y + 16);
+      valText.setAttribute('fill', '#1E2A30');
+      valText.setAttribute('font-size', '11px');
+      valText.setAttribute('font-weight', 'bold');
+      valText.textContent = `${Math.round(g.orderAmt).toLocaleString()}천원`;
+      svg.appendChild(valText);
+    });
+
+    svg.setAttribute('height', groupSummaryData.length * (barHeight + gap) + 20);
+  }
+
+  function renderPreview() {
+    const thead = document.getElementById('previewThead');
+    const tbody = document.getElementById('previewTbody');
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+
+    const trHead = document.createElement('tr');
+    rawHeader.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      trHead.appendChild(th);
+    });
+    thead.appendChild(trHead);
+
+    cleanDataRows.slice(0, 5).forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach(val => {
+        const td = document.createElement('td');
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ==========================================
+  // 3단계: ExcelJS 4.4.0 기반 엑셀 파일 생성 (.xlsx)
+  // ==========================================
+  async function downloadExcel() {
+    if (!cleanDataRows.length) {
+      alert('정제할 데이터가 없습니다.');
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = '한국미우라공업 AI 도구';
+    workbook.created = new Date();
+
+    const idxOrder = parseInt(document.getElementById('colOrder').value, 10);
+    const idxDate = parseInt(document.getElementById('colDate').value, 10);
+    const idxGroup = parseInt(document.getElementById('colGroup').value, 10);
+    const idxAmt = parseInt(document.getElementById('colAmount').value, 10);
+    const idxSales = parseInt(document.getElementById('colSales').value, 10);
+    const idxStatus = parseInt(document.getElementById('colStatus').value, 10);
+
+    const cleanMaxRow = cleanDataRows.length + 1;
+
+    // Excel 열 문자 변환 헬퍼 (A=1)
+    function colLetter(colIdx1) {
+      let temp, letter = '';
+      let col = colIdx1;
+      while (col > 0) {
+        temp = (col - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        col = (col - temp - 1) / 26;
+      }
+      return letter;
+    }
+
+    const letterGroup = colLetter(idxGroup + 1);
+    const letterDate = colLetter(idxDate + 1);
+    const letterAmt = colLetter(idxAmt + 1);
+    const letterSales = colLetter(idxSales + 1);
+    const letterStatus = colLetter(idxStatus + 1);
+
+    // 스타일 설정
+    const fillHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF3F5' } };
+    const fontHeader = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF1E2A30' } };
+    const fontTitle = { name: '맑은 고딕', size: 14, bold: true, color: { argb: 'FF134B5F' } };
+    const borderThin = {
+      top: { style: 'thin', color: { argb: 'FFD5DDE0' } },
+      bottom: { style: 'thin', color: { argb: 'FFD5DDE0' } },
+      left: { style: 'thin', color: { argb: 'FFD5DDE0' } },
+      right: { style: 'thin', color: { argb: 'FFD5DDE0' } }
+    };
+    const borderHeader = {
+      top: { style: 'thin', color: { argb: 'FFD5DDE0' } },
+      bottom: { style: 'medium', color: { argb: 'FF134B5F' } },
+      left: { style: 'thin', color: { argb: 'FFD5DDE0' } },
+      right: { style: 'thin', color: { argb: 'FFD5DDE0' } }
+    };
+    const borderTotal = {
+      top: { style: 'thin', color: { argb: 'FF134B5F' } },
+      bottom: { style: 'double', color: { argb: 'FF134B5F' } },
+      left: { style: 'thin', color: { argb: 'FFD5DDE0' } },
+      right: { style: 'thin', color: { argb: 'FFD5DDE0' } }
+    };
+
+    // ----------------------------------------------------
+    // 시트 1: 요약
+    // ----------------------------------------------------
+    const wsSummary = workbook.addWorksheet('요약', { views: [{ showGridLines: false }] });
+    wsSummary.getCell('A1').value = '수주 실적 종합 요약';
+    wsSummary.getCell('A1').font = fontTitle;
+    wsSummary.getCell('A2').value = '단위: 건, 천원, % (부가세 별도)';
+    wsSummary.getCell('A2').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF6B7A80' } };
+
+    // 요약 테이블 헤더 (Row 5)
+    const summaryHeaders = ['구분', '수주건수', '수주금액(천원)', '수주비중', '순위', '완료건수', '매출금액(천원)', '완료율'];
+    const rowSummaryHead = wsSummary.getRow(5);
+    summaryHeaders.forEach((h, idx) => {
+      const cell = rowSummaryHead.getCell(idx + 1);
+      cell.value = h;
+      cell.fill = fillHeader;
+      cell.font = fontHeader;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = borderHeader;
+    });
+
+    const groupRowCount = groupSummaryData.length;
+    groupSummaryData.forEach((g, idx) => {
+      const rIdx = 6 + idx;
+      const row = wsSummary.getRow(rIdx);
+      const gCellRef = `A${rIdx}`;
+
+      // 수식 + 결과값 동시 입력
+      row.getCell(1).value = g.name;
+      row.getCell(2).value = {
+        formula: `COUNTIF(정리데이터!$${letterGroup}$2:$${letterGroup}$${cleanMaxRow}, ${gCellRef})`,
+        result: g.count
+      };
+      row.getCell(3).value = {
+        formula: `SUMIF(정리데이터!$${letterGroup}$2:$${letterGroup}$${cleanMaxRow}, ${gCellRef}, 정리데이터!$${letterAmt}$2:$${letterAmt}$${cleanMaxRow})`,
+        result: g.orderAmt
+      };
+      row.getCell(4).value = {
+        formula: `C${rIdx}/$C$${6 + groupRowCount}`,
+        result: g.share
+      };
+      row.getCell(5).value = {
+        formula: `RANK.EQ(C${rIdx}, $C$6:$C$${5 + groupRowCount})`,
+        result: g.rank
+      };
+      row.getCell(6).value = {
+        formula: `COUNTIFS(정리데이터!$${letterGroup}$2:$${letterGroup}$${cleanMaxRow}, ${gCellRef}, 정리데이터!$${letterStatus}$2:$${letterStatus}$${cleanMaxRow}, "완료")`,
+        result: g.compCount
+      };
+      row.getCell(7).value = {
+        formula: `SUMIFS(정리데이터!$${letterSales}$2:$${letterSales}$${cleanMaxRow}, 정리데이터!$${letterGroup}$2:$${letterGroup}$${cleanMaxRow}, ${gCellRef}, 정리데이터!$${letterStatus}$2:$${letterStatus}$${cleanMaxRow}, "완료")`,
+        result: g.salesAmt
+      };
+      row.getCell(8).value = {
+        formula: `F${rIdx}/B${rIdx}`,
+        result: g.compRate
+      };
+
+      // 스타일링
+      row.getCell(1).alignment = { horizontal: 'center' };
+      row.getCell(1).font = { name: '맑은 고딕', bold: true };
+      for (let c = 2; c <= 8; c++) {
+        const cell = row.getCell(c);
+        cell.border = borderThin;
+        cell.alignment = { horizontal: c === 5 ? 'center' : 'right' };
+        if (c === 2 || c === 5 || c === 6) cell.numFmt = '#,##0';
+        else if (c === 3 || c === 7) cell.numFmt = '#,##0';
+        else if (c === 4 || c === 8) cell.numFmt = '0.0%';
+      }
+    });
+
+    // 요약 합계 행
+    const totalRowIdx = 6 + groupRowCount;
+    const rowSummaryTotal = wsSummary.getRow(totalRowIdx);
+    rowSummaryTotal.getCell(1).value = '합계';
+    rowSummaryTotal.getCell(2).value = { formula: `SUM(B6:B${totalRowIdx - 1})`, result: totalCleanCount };
+    rowSummaryTotal.getCell(3).value = { formula: `SUM(C6:C${totalRowIdx - 1})`, result: totalOrderAmt };
+    rowSummaryTotal.getCell(4).value = { formula: `SUM(D6:D${totalRowIdx - 1})`, result: 1.0 };
+    rowSummaryTotal.getCell(5).value = '-';
+    rowSummaryTotal.getCell(6).value = { formula: `SUM(F6:F${totalRowIdx - 1})`, result: groupSummaryData.reduce((a,c)=>a+c.compCount,0) };
+    rowSummaryTotal.getCell(7).value = { formula: `SUM(G6:G${totalRowIdx - 1})`, result: groupSummaryData.reduce((a,c)=>a+c.salesAmt,0) };
+    rowSummaryTotal.getCell(8).value = { formula: `F${totalRowIdx}/B${totalRowIdx}`, result: totalCleanCount>0?groupSummaryData.reduce((a,c)=>a+c.compCount,0)/totalCleanCount:0 };
+
+    for (let c = 1; c <= 8; c++) {
+      const cell = rowSummaryTotal.getCell(c);
+      cell.fill = fillHeader;
+      cell.font = { name: '맑은 고딕', bold: true };
+      cell.border = borderTotal;
+      cell.alignment = { horizontal: c === 1 || c === 5 ? 'center' : 'right' };
+      if (c === 2 || c === 6) cell.numFmt = '#,##0';
+      else if (c === 3 || c === 7) cell.numFmt = '#,##0';
+      else if (c === 4 || c === 8) cell.numFmt = '0.0%';
+    }
+
+    // 검산 한 줄 (Row + 2)
+    const auditRowIdx = totalRowIdx + 2;
+    wsSummary.getCell(`A${auditRowIdx}`).value = '검산';
+    wsSummary.getCell(`A${auditRowIdx}`).font = { name: '맑은 고딕', bold: true, color: { argb: 'FF134B5F' } };
+    wsSummary.getCell(`B${auditRowIdx}`).value = {
+      formula: `IF(C${totalRowIdx}=SUM(정리데이터!$${letterAmt}$2:$${letterAmt}$${cleanMaxRow}), "일치", "불일치")`,
+      result: '일치'
+    };
+    wsSummary.getCell(`B${auditRowIdx}`).font = { name: '맑은 고딕', bold: true, color: { argb: 'FF134B5F' } };
+    wsSummary.getCell(`C${auditRowIdx}`).value = '기준 열별 합계 = 전체 수주금액 합계';
+    wsSummary.getCell(`C${auditRowIdx}`).font = { name: '맑은 고딕', size: 9, color: { argb: 'FF6B7A80' } };
+
+    wsSummary.views = [{ state: 'frozen', xSplit: 0, ySplit: 5 }];
+
+    // ----------------------------------------------------
+    // 시트 2: 월별
+    // ----------------------------------------------------
+    const wsMonthly = workbook.addWorksheet('월별');
+    wsMonthly.getCell('A1').value = '월별 수주 및 매출 추이';
+    wsMonthly.getCell('A1').font = fontTitle;
+
+    const monthlyHeaders = ['월', '수주건수', '수주금액(천원)', '완료건수', '매출금액(천원)', '완료율'];
+    const rowMonthHead = wsMonthly.getRow(4);
+    monthlyHeaders.forEach((h, idx) => {
+      const cell = rowMonthHead.getCell(idx + 1);
+      cell.value = h;
+      cell.fill = fillHeader;
+      cell.font = fontHeader;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = borderHeader;
+    });
+
+    monthlySummaryData.forEach((m, idx) => {
+      const rIdx = 5 + idx;
+      const row = wsMonthly.getRow(rIdx);
+      const mVal = m.month;
+
+      row.getCell(1).value = mVal;
+      row.getCell(2).value = {
+        formula: `COUNTIFS(정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, ">="&A${rIdx}&"-01", 정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, "<="&A${rIdx}&"-31")`,
+        result: m.count
+      };
+      row.getCell(3).value = {
+        formula: `SUMIFS(정리데이터!$${letterAmt}$2:$${letterAmt}$${cleanMaxRow}, 정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, ">="&A${rIdx}&"-01", 정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, "<="&A${rIdx}&"-31")`,
+        result: m.orderAmt
+      };
+      row.getCell(4).value = {
+        formula: `COUNTIFS(정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, ">="&A${rIdx}&"-01", 정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, "<="&A${rIdx}&"-31", 정리데이터!$${letterStatus}$2:$${letterStatus}$${cleanMaxRow}, "완료")`,
+        result: m.compCount
+      };
+      row.getCell(5).value = {
+        formula: `SUMIFS(정리데이터!$${letterSales}$2:$${letterSales}$${cleanMaxRow}, 정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, ">="&A${rIdx}&"-01", 정리데이터!$${letterDate}$2:$${letterDate}$${cleanMaxRow}, "<="&A${rIdx}&"-31", 정리데이터!$${letterStatus}$2:$${letterStatus}$${cleanMaxRow}, "완료")`,
+        result: m.salesAmt
+      };
+      row.getCell(6).value = {
+        formula: `IF(B${rIdx}>0, D${rIdx}/B${rIdx}, 0)`,
+        result: m.compRate
+      };
+
+      row.getCell(1).alignment = { horizontal: 'center' };
+      for (let c = 2; c <= 6; c++) {
+        const cell = row.getCell(c);
+        cell.border = borderThin;
+        cell.alignment = { horizontal: 'right' };
+        if (c === 2 || c === 4) cell.numFmt = '#,##0';
+        else if (c === 3 || c === 5) cell.numFmt = '#,##0';
+        else if (c === 6) cell.numFmt = '0.0%';
+      }
+    });
+
+    // 월별 합계 행
+    const mTotalIdx = 5 + monthlySummaryData.length;
+    const rowMonthTotal = wsMonthly.getRow(mTotalIdx);
+    rowMonthTotal.getCell(1).value = '합계';
+    rowMonthTotal.getCell(2).value = { formula: `SUM(B5:B${mTotalIdx - 1})`, result: totalCleanCount };
+    rowMonthTotal.getCell(3).value = { formula: `SUM(C5:C${mTotalIdx - 1})`, result: totalOrderAmt };
+    rowMonthTotal.getCell(4).value = { formula: `SUM(D5:D${mTotalIdx - 1})`, result: monthlySummaryData.reduce((a,c)=>a+c.compCount,0) };
+    rowMonthTotal.getCell(5).value = { formula: `SUM(E5:E${mTotalIdx - 1})`, result: monthlySummaryData.reduce((a,c)=>a+c.salesAmt,0) };
+    rowMonthTotal.getCell(6).value = { formula: `IF(B${mTotalIdx}>0, D${mTotalIdx}/B${mTotalIdx}, 0)`, result: totalCleanCount>0?monthlySummaryData.reduce((a,c)=>a+c.compCount,0)/totalCleanCount:0 };
+
+    for (let c = 1; c <= 6; c++) {
+      const cell = rowMonthTotal.getCell(c);
+      cell.fill = fillHeader;
+      cell.font = { name: '맑은 고딕', bold: true };
+      cell.border = borderTotal;
+      cell.alignment = { horizontal: c === 1 ? 'center' : 'right' };
+      if (c === 2 || c === 4) cell.numFmt = '#,##0';
+      else if (c === 3 || c === 5) cell.numFmt = '#,##0';
+      else if (c === 6) cell.numFmt = '0.0%';
+    }
+    wsMonthly.views = [{ state: 'frozen', xSplit: 0, ySplit: 4 }];
+
+    // ----------------------------------------------------
+    // 시트 3: 정리데이터
+    // ----------------------------------------------------
+    const wsClean = workbook.addWorksheet('정리데이터');
+    const rowCleanHead = wsClean.addRow(rawHeader);
+    rowCleanHead.eachCell(cell => {
+      cell.fill = fillHeader;
+      cell.font = fontHeader;
+      cell.border = borderHeader;
+      cell.alignment = { horizontal: 'center' };
+    });
+
+    cleanDataRows.forEach(r => {
+      const convRow = r.map((val, colIdx) => {
+        if (colIdx === idxAmt || colIdx === idxSales) {
+          if (val === '' || val === null || val === undefined) return null;
+          const num = Number(val.toString().replace(/,/g, ''));
+          return isNaN(num) ? val : num;
+        }
+        return val;
+      });
+      const addedRow = wsClean.addRow(convRow);
+      addedRow.eachCell((cell, colNum) => {
+        cell.border = borderThin;
+        if (colNum === idxAmt + 1 || colNum === idxSales + 1) {
+          if (typeof cell.value === 'number') {
+            cell.numFmt = '#,##0';
+            cell.alignment = { horizontal: 'right' };
+          }
+        }
+      });
+    });
+    wsClean.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+    // ----------------------------------------------------
+    // 시트 4: 제외내역
+    // ----------------------------------------------------
+    const wsExcl = workbook.addWorksheet('제외내역');
+    const exclHeaders = [...rawHeader, '제외사유'];
+    const rowExclHead = wsExcl.addRow(exclHeaders);
+    rowExclHead.eachCell(cell => {
+      cell.fill = fillHeader;
+      cell.font = fontHeader;
+      cell.border = borderHeader;
+      cell.alignment = { horizontal: 'center' };
+    });
+    excludedRows.forEach(r => {
+      const row = wsExcl.addRow(r);
+      row.eachCell(cell => { cell.border = borderThin; });
+    });
+    wsExcl.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+    // ----------------------------------------------------
+    // 시트 5: 원본
+    // ----------------------------------------------------
+    const wsRaw = workbook.addWorksheet('원본');
+    const rowRawHead = wsRaw.addRow(rawHeader);
+    rowRawHead.eachCell(cell => {
+      cell.fill = fillHeader;
+      cell.font = fontHeader;
+      cell.border = borderHeader;
+      cell.alignment = { horizontal: 'center' };
+    });
+    rawDataRows.forEach(r => {
+      const row = wsRaw.addRow(r);
+      row.eachCell(cell => { cell.border = borderThin; });
+    });
+    wsRaw.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+    // 모든 시트 열 너비 자동 조정
+    [wsSummary, wsMonthly, wsClean, wsExcl, wsRaw].forEach(ws => {
+      ws.columns.forEach(column => {
+        let maxLen = 12;
+        column.eachCell({ includeEmpty: false }, cell => {
+          const val = cell.value ? cell.value.toString() : '';
+          maxLen = Math.max(maxLen, val.length + 4);
+        });
+        column.width = Math.min(maxLen, 30);
+      });
+    });
+
+    // 파일 이름 규칙: YYYYMMDD_원래파일이름_정리_v01.xlsx
+    const now = new Date();
+    const datePrefix = now.getFullYear().toString() + 
+                       String(now.getMonth() + 1).padStart(2, '0') + 
+                       String(now.getDate()).padStart(2, '0');
+    const baseName = rawFileObj.name.replace(/\.csv$/i, '');
+    const outFileName = `${datePrefix}_${baseName}_정리_v01.xlsx`;
+
+    // 다운로드 실행
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // 정리된 CSV 내려받기 (UTF-8 BOM)
+  function downloadCleanCSV() {
+    if (!cleanDataRows.length) {
+      alert('다운로드할 데이터가 없습니다.');
+      return;
+    }
+
+    const csvLines = [];
+    csvLines.push(rawHeader.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
+
+    cleanDataRows.forEach(row => {
+      const line = row.map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
+      csvLines.push(line);
+    });
+
+    const csvContent = '\uFEFF' + csvLines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const now = new Date();
+    const datePrefix = now.getFullYear().toString() + 
+                       String(now.getMonth() + 1).padStart(2, '0') + 
+                       String(now.getDate()).padStart(2, '0');
+    const baseName = rawFileObj ? rawFileObj.name.replace(/\.csv$/i, '') : '데이터';
+    const outFileName = `${datePrefix}_${baseName}_정리_v01.csv`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+</script>
+
+</body>
+</html>
