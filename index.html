@@ -599,18 +599,36 @@
     }
 
     // QR 코드 자동 생성 (배포된 GitHub Pages 실제 주소로 고정)
-    window.addEventListener('DOMContentLoaded', () => {
-      try {
-        const targetUrl = 'https://inchoriya1.github.io/my-card/';
+    function renderQRCode() {
+      const targetUrl = 'https://inchoriya1.github.io/my-card/';
+      const container = document.getElementById('qrcodeBack');
+      if (!container) return;
 
-        const qr = qrcode(0, 'M');
-        qr.addData(targetUrl);
-        qr.make();
-        document.getElementById('qrcodeBack').innerHTML = qr.createImgTag(3.5, 6);
+      try {
+        if (typeof qrcode !== 'undefined') {
+          // typeNumber: 0 (auto), errorCorrectionLevel: 'M'
+          const qr = qrcode(0, 'M');
+          qr.addData(targetUrl);
+          qr.make();
+          // cellSize는 반드시 정수(4), margin은 6
+          container.innerHTML = qr.createImgTag(4, 6);
+          const img = container.querySelector('img');
+          if (img) {
+            img.style.width = '130px';
+            img.style.height = '130px';
+            img.style.display = 'block';
+          }
+        } else {
+          // CDN 라이브러리 로드 지연 시 안정적인 QR API 폴백
+          container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(targetUrl)}" alt="QR 코드" style="width:130px;height:130px;display:block;">`;
+        }
       } catch (e) {
-        document.getElementById('qrcodeBack').innerHTML = '<span style="font-size:11px;color:#6B7A80;">QR 코드</span>';
+        container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(targetUrl)}" alt="QR 코드" style="width:130px;height:130px;display:block;">`;
       }
-    });
+    }
+
+    window.addEventListener('DOMContentLoaded', renderQRCode);
+    window.addEventListener('load', renderQRCode);
   </script>
 
 </body>
